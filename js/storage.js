@@ -1,16 +1,27 @@
-const KEY = 'jkl.applications';
+const collection = (key) => ({
+  read: () => JSON.parse(localStorage.getItem(key) ?? '[]'),
+  write: (items) => localStorage.setItem(key, JSON.stringify(items)),
+});
 
-const read = () => JSON.parse(localStorage.getItem(KEY) ?? '[]');
-const write = (items) => localStorage.setItem(KEY, JSON.stringify(items));
+const applications = collection('jkl.applications');
+const notifications = collection('jkl.notifications');
 
-export const listApplications = read;
+export const listApplications = applications.read;
 
 export function addApplication(data) {
-  const items = read();
+  const items = applications.read();
   const id = `APP-${String(items.length + 1).padStart(4, '0')}`;
-  write([...items, { id, status: 'SUBMITTED', data }]);
+  applications.write([...items, { id, status: 'SUBMITTED', data }]);
+  return id;
 }
 
-export function updateStatus(id, status) {
-  write(read().map((item) => (item.id === id ? { ...item, status } : item)));
+export function updateApplication(id, { status, data }) {
+  applications.write(
+    applications.read().map((item) => (item.id === id ? { ...item, status, data: { ...item.data, ...data } } : item)),
+  );
 }
+
+export const addNotification = (role, message) => notifications.write([...notifications.read(), { role, message }]);
+
+export const listNotifications = (role) =>
+  notifications.read().filter((item) => item.role === role).reverse().slice(0, 5);

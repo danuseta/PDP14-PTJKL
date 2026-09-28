@@ -6,11 +6,13 @@ export const ROLES = {
   konsumen: 'Konsumen',
 };
 
-export const CREATOR_ROLES = ['dealer', 'marketing'];
+export const CREATOR_ROLE = 'dealer';
 
 export const STATUS_LABEL = {
   SUBMITTED: 'Diajukan',
+  INCOMPLETE: 'Tidak Lengkap',
   WAITING_APPROVAL: 'Menunggu Approval',
+  REVISION: 'Perlu Revisi',
   APPROVED: 'Disetujui',
   REJECTED: 'Ditolak',
   WAITING_SIGN: 'Menunggu TTD',
@@ -18,20 +20,12 @@ export const STATUS_LABEL = {
   DISBURSED: 'Dana Cair',
 };
 
-export const TRANSITIONS = {
-  SUBMITTED: [{ role: 'marketing', label: 'Verifikasi & ajukan', to: 'WAITING_APPROVAL' }],
-  WAITING_APPROVAL: [
-    { role: 'atasan', label: 'Setujui', to: 'APPROVED' },
-    { role: 'atasan', label: 'Minta revisi', to: 'SUBMITTED' },
-    { role: 'atasan', label: 'Tolak', to: 'REJECTED' },
-  ],
-  APPROVED: [{ role: 'admin', label: 'Kirim e-sign', to: 'WAITING_SIGN' }],
-  WAITING_SIGN: [{ role: 'konsumen', label: 'Tanda tangan', to: 'SIGNED' }],
-  SIGNED: [{ role: 'admin', label: 'Cairkan dana', to: 'DISBURSED' }],
-};
+export const CONTRACT_STATUSES = ['APPROVED', 'WAITING_SIGN', 'SIGNED', 'DISBURSED'];
 
-export const FORM_SECTIONS = [
-  {
+const FILE = { type: 'file', accept: '.pdf,.jpg,.jpeg,.png' };
+
+export const SECTIONS = {
+  konsumen: {
     title: 'Data Konsumen',
     fields: [
       { name: 'nama', label: 'Nama' },
@@ -41,7 +35,7 @@ export const FORM_SECTIONS = [
       { name: 'pasangan', label: 'Nama Pasangan', required: false },
     ],
   },
-  {
+  kendaraan: {
     title: 'Data Kendaraan',
     fields: [
       { name: 'dealer', label: 'Dealer' },
@@ -52,7 +46,16 @@ export const FORM_SECTIONS = [
       { name: 'harga', label: 'Harga (Rp)', type: 'number' },
     ],
   },
-  {
+  dokumen: {
+    title: 'Dokumen',
+    fields: [
+      { name: 'ktp', label: 'KTP', ...FILE },
+      { name: 'spk', label: 'SPK', ...FILE },
+      { name: 'buktiTandaJadi', label: 'Bukti Bayar Tanda Jadi', ...FILE },
+      { name: 'kk', label: 'Kartu Keluarga', ...FILE },
+    ],
+  },
+  pinjaman: {
     title: 'Data Pinjaman',
     fields: [
       { name: 'asuransi', label: 'Asuransi' },
@@ -61,4 +64,28 @@ export const FORM_SECTIONS = [
       { name: 'angsuran', label: 'Angsuran/Bulan (Rp)', type: 'number' },
     ],
   },
-];
+};
+
+export const FILE_FIELDS = SECTIONS.dokumen.fields;
+
+export const FORMS = {
+  pengajuan: [SECTIONS.konsumen, SECTIONS.kendaraan, SECTIONS.dokumen],
+  pinjaman: [SECTIONS.pinjaman],
+};
+
+export const TRANSITIONS = {
+  SUBMITTED: [
+    { role: 'marketing', label: 'Tidak lengkap', to: 'INCOMPLETE', notify: ['dealer'] },
+    { role: 'marketing', label: 'Lengkap, input pinjaman', to: 'WAITING_APPROVAL', form: 'pinjaman', notify: ['atasan'] },
+  ],
+  INCOMPLETE: [{ role: 'dealer', label: 'Lengkapi data', to: 'SUBMITTED', form: 'pengajuan', notify: ['marketing'] }],
+  WAITING_APPROVAL: [
+    { role: 'atasan', label: 'Setujui', to: 'APPROVED', notify: ['admin'] },
+    { role: 'atasan', label: 'Minta revisi', to: 'REVISION', notify: ['marketing'] },
+    { role: 'atasan', label: 'Tolak', to: 'REJECTED', notify: ['dealer', 'marketing'] },
+  ],
+  REVISION: [{ role: 'marketing', label: 'Revisi data pinjaman', to: 'WAITING_APPROVAL', form: 'pinjaman', notify: ['atasan'] }],
+  APPROVED: [{ role: 'admin', label: 'Kirim e-sign & PO', to: 'WAITING_SIGN', notify: ['konsumen', 'dealer'] }],
+  WAITING_SIGN: [{ role: 'konsumen', label: 'Tanda tangan', to: 'SIGNED', notify: ['admin'] }],
+  SIGNED: [{ role: 'admin', label: 'Cairkan dana', to: 'DISBURSED', notify: ['dealer', 'marketing'] }],
+};
